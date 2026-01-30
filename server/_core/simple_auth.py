@@ -12,7 +12,7 @@ SIMPLE_USERS = {
         "openId": "local_example_at_mail.ru",
         "email": "example@mail.ru",
         "name": "example",
-        "passwordHash": "$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewY5GyYqJqJqJqJq",  # hash for "123"
+        "passwordHash": "$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewY5GyYqJqJqJqJq",  # hash (not used, password checked in VALID_PASSWORDS)
         "role": "user",
         "loginMethod": "email",
         "createdAt": datetime.utcnow(),
@@ -20,11 +20,11 @@ SIMPLE_USERS = {
     }
 }
 
-# Password: 123
-# To generate: from passlib.context import CryptContext; pwd_context = CryptContext(schemes=["bcrypt"]); print(pwd_context.hash("123"))
+# Password: Kp9mX2vN7qR4wL8tY5zA
+# To generate: from passlib.context import CryptContext; pwd_context = CryptContext(schemes=["bcrypt"]); print(pwd_context.hash("password"))
 # For now, using a simple check
 VALID_PASSWORDS = {
-    "example@mail.ru": "123"
+    "example@mail.ru": "Kp9mX2vN7qR4wL8tY5zA"
 }
 
 

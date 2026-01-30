@@ -67,7 +67,7 @@ export default defineConfig({
   },
   server: {
     host: true,
-    port: 4001,
+    port: 4002,
     allowedHosts: [
       ".manuspre.computer",
       ".manus.computer",
@@ -77,10 +77,12 @@ export default defineConfig({
       "localhost",
       "127.0.0.1",
       "176.98.234.178",
-    ],
+      "medscan.krmu.edu.kz",
+      "wss://medscan.krmu.edu.kz/ws/",
+       ],
     proxy: {
       "/api": {
-        target: "http://localhost:4001",
+        target: "http://localhost:4003",
         changeOrigin: true,
         secure: false,
         // Важно: передавать cookies через прокси
@@ -110,10 +112,25 @@ export default defineConfig({
     },
     hmr: {
       overlay: false,
-      host: 'localhost',
-      port: 4001,
       clientPort: 4001,
+      protocol: 'ws',
     },
+  },
+  preview: {
+    host: true,
+    port: 4002,
+    allowedHosts: [
+      ".manuspre.computer",
+      ".manus.computer",
+      ".manus-asia.computer",
+      ".manuscomputer.ai",
+      ".manusvm.computer",
+      "localhost",
+      "127.0.0.1",
+      "176.98.234.178",
+      "medscan.krmu.edu.kz",
+      "wss://medscan.krmu.edu.kz/ws/",
+    ],
   },
   optimizeDeps: {
     exclude: ["lucide-react"],

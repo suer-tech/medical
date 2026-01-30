@@ -3,7 +3,19 @@ from typing import Optional
 from datetime import datetime
 import tempfile
 import os
-from nanoid import generate
+import secrets
+import string
+
+# Optional nanoid import
+try:
+    from nanoid import generate
+    NANOID_AVAILABLE = True
+except ImportError:
+    NANOID_AVAILABLE = False
+    # Fallback function if nanoid is not available
+    def generate(size=21):
+        alphabet = string.ascii_letters + string.digits + '-_'
+        return ''.join(secrets.choice(alphabet) for _ in range(size))
 
 # Try to import WeasyPrint, but don't fail if it's not available
 WEASYPRINT_AVAILABLE = False

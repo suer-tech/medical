@@ -105,7 +105,7 @@ async def invoke_llm(
     _assert_api_key()
     
     payload: Dict[str, Any] = {
-        "model": "openai/gpt-5-mini",
+        "model": "openai/gpt-5.2",
         "messages": [_normalize_message(msg) for msg in messages],
     }
     
@@ -121,22 +121,56 @@ async def invoke_llm(
         payload["response_format"] = response_format
     
     import httpx
+    import json
+    api_url = _resolve_api_url()
+    api_key = env.forge_api_key
+    
+    # Log request details (without exposing full key)
+    print(f"[LLM] Request to: {api_url}")
+    print(f"[LLM] API key present: {bool(api_key)}, key prefix: {api_key[:15]}..." if api_key else "[LLM] API key: NOT SET")
+    print(f"[LLM] Payload model: {payload.get('model')}")
+    
     async with httpx.AsyncClient() as client:
-        response = await client.post(
-            _resolve_api_url(),
-            headers={
-                "content-type": "application/json",
-                "authorization": f"Bearer {env.forge_api_key}",
-            },
-            json=payload,
-            timeout=60.0,
-        )
+        headers = {
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {api_key}",
+            "HTTP-Referer": "https://ai.teamidea.ru",
+            "X-Title": "Medical AI Analysis",
+        }
+        print(f"[LLM] Headers: {list(headers.keys())}")
         
-        if not response.is_success:
-            error_text = await response.aread()
-            raise ValueError(
-                f"LLM invoke failed: {response.status_code} {response.reason_phrase} – {error_text.decode()}"
+        try:
+            response = await client.post(
+                api_url,
+                headers=headers,
+                json=payload,
+                timeout=60.0,
             )
-        
-        return response.json()
+            
+            if not response.is_success:
+                error_text = await response.aread()
+                try:
+                    error_json = json.loads(error_text.decode())
+                    error_message = error_json.get("error", {}).get("message", error_text.decode())
+                    error_code = error_json.get("error", {}).get("code", "")
+                except (json.JSONDecodeError, AttributeError):
+                    error_message = error_text.decode() if error_text else "No error details"
+                    error_code = ""
+                
+                print(f"[LLM] Error response: {response.status_code} {response.reason_phrase}")
+                print(f"[LLM] Error message: {error_message}")
+                print(f"[LLM] Error code: {error_code}")
+                print(f"[LLM] Full error response: {error_text.decode()[:500] if error_text else 'No response body'}")
+                
+                raise ValueError(
+                    f"LLM invoke failed: {response.status_code} {response.reason_phrase} – {error_message}"
+                )
+            
+            return response.json()
+        except httpx.HTTPError as e:
+            print(f"[LLM] HTTP error: {e}")
+            raise ValueError(f"LLM HTTP error: {e}")
+        except Exception as e:
+            print(f"[LLM] Unexpected error: {type(e).__name__}: {e}")
+            raise
 

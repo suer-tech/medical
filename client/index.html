@@ -15,8 +15,194 @@
   </head>
 
   <body>
+
+    <style>
+      .header {
+      position: relative;
+      background-color: rgb(18, 48, 117);
+      z-index: 1000;
+
+      background-color: rgb(9, 32, 86);
+      background: -webkit-linear-gradient(180deg, rgb(18, 48, 117), rgb(9, 32, 86));
+      background: -moz-linear-gradient(180deg, rgb(18, 48, 117), rgb(9, 32, 86));
+      background: linear-gradient(180deg, rgb(18, 48, 117), rgb(9, 32, 86));
+      }
+      .header_inner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      grid-gap: 15px;
+
+      padding: 10px;
+      }
+      .header_logo {
+        display: flex;
+        align-items: center;
+        z-index: 1;
+      }
+
+      .header_logo img {
+        height: 60px;
+      }
+
+      .header_logo_text {
+        display: flex;
+        flex-direction: column;
+        color: #fff !important;
+        margin-left: 10px;
+        padding: 5px 10px;
+        border-left: 1px solid #f91c3d;
+      }
+
+      .header_logo_text span {
+        font-size: 13px;
+        font-weight: 500;
+        letter-spacing: 1px;
+        text-transform: uppercase;
+      }
+
+      .header_logo_text b {
+        font-size: 11px;
+        font-weight: 400;
+        margin-top: 2px;
+      }
+
+      .footer {
+        background-color: rgb(6, 24, 67);
+        background: -webkit-linear-gradient(180deg, rgb(9, 32, 86), rgb(6, 24, 67));
+        background: -moz-linear-gradient(180deg, rgb(9, 32, 86), rgb(6, 24, 67));
+        background: linear-gradient(180deg, rgb(9, 32, 86), rgb(6, 24, 67));
+      }
+
+      .footer_inner {
+        display: flex;
+        align-items: flex-start;
+        justify-content: flex-start;
+        flex-wrap: wrap;
+        grid-gap: 40px;
+        padding: 40px;
+      }
+
+      .footer_info {
+        flex-grow: 1;
+        width: fit-content;
+        font-style: normal;
+      }
+
+      .footer_info h3 {
+        color: #fff;
+        font-size: 16px;
+        font-weight: 600;
+
+        padding: 0 5px 5px;
+        border-bottom: 1px solid #f91c3d;
+      }
+
+      .footer_info p {
+        color: #fff;
+        font-size: 14px;
+        font-weight: 400;
+        line-height: 1.2;
+        margin: 0;
+        margin-top: 5px;
+        padding: 5px;
+      }
+
+      .footer_info a {
+        color: inherit;
+        text-decoration: underline 1px;
+        transition: all 0.2s linear;
+      }
+
+      .footer_info a:hover {
+        text-decoration-color: transparent;
+      }
+
+      .footer_info p b {
+        font-weight: 400;
+      }
+
+      .footer_info-social {
+        display: flex;
+        grid-gap: 15px;
+        margin-top: 10px;
+        padding: 0 5px;
+      }
+
+      .footer_info-social a {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s linear;
+      }
+
+      .footer_info-social img {
+        width: 25px;
+      }
+
+
+
+      .footer_copy {
+        width: 100%;
+        color: #576a7b;
+        font-size: 12px;
+        font-weight: 900;
+        text-align: center;
+        padding: 10px;
+        border-top: 1px solid #576a7b;
+      }
+
+      @media (max-width: 767px) {
+        .footer_inner {
+          padding: 20px;
+        }
+      }
+    </style>
+    <header class="header">
+      <div class="header_inner">
+        <div class="header_logo">
+          <a href="https://new.krmu.edu.kz" style="display: flex;">
+            <img src="https://new.krmu.edu.kz/assets/images/logo.png">
+          </a>
+          <div class="header_logo_text">
+            <span class="">Казахстанско-Российский</span>
+            <span class="">Медицинский Университет</span>
+            <b class="">Основан в 1992 году</b>
+          </div><!--/ header_logo_text -->
+        </div><!--/ header_logo -->
+      </div><!--/ header_inner -->
+    </header><!--/ header -->
+
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
+
+    <footer class="footer">
+      <section class="footer_inner">
+
+        <address class="footer_info">
+          <h3 lang="contacts">Контакты:</h3>
+          <p><b lang="nei_krmu">НУО «Казахстанско-Российский медицинский университет»</b></p>
+          <p><b lang="address">Адрес:</b> <span lang="torekulova">г. Алматы, Ул. Торекулова, Д. 71, Уг. Пр.
+              Сейфуллина.</span></p>
+          <p><b lang="address">Адрес:</b><span lang="ablaykhana"> г. Алматы, Абылай Хана 51/53. </span></p>
+          <p style="display: flex; flex-wrap: wrap; gap: 4px;"><b lang="admission_contacts_number">Колл центр приемной комиссии:</b> <a
+              href="https://api.whatsapp.com/send/?phone=+77079465931&text=Сәлеметсіз бе! Здравствуйте!">+7 707
+              946 5931</a><img style="width: 18px; margin-bottom: -4px;" src="https://new.krmu.edu.kz/assets/images/WhatsApp.svg"></p>
+          <p><b lang="office">Канцелярия:</b> <a href="tel:+77272508375">+7 727 250 83 75</a></p>
+          <p><b>E-mail:</b> <a href="mailto:info@medkrmu.kz">info@medkrmu.kz</a></p>
+        </address><!-- /footer_info -->
+        <article class="footer_info">
+          <h3 lang="details">Реквизиты:</h3>
+          <p><b lang="address">Адрес:</b> <span lang="ablaykhana"> г. Алматы, Абылай Хана 51/53. </span></p>
+          <p><b lang="bin">БИН:</b> 970 240 002 300</p>
+          <p><b lang="iik">ИИК:</b> KZ696010131000164962</p>
+          <p><b lang="bik">БИК:</b> HSBKKZKX КНП- 861, КБе-18</p>
+          <p><b lang="narodniy">АО</b> <span lang="bank">“Народный Банк Казахстан” г.Алматы </span></p>
+        </article><!-- /footer_info -->
+      </section><!-- /footer_inner -->
+      <div class="footer_copy" lang="all_rights_reserved">© Казахстанско-Российский Медицинский Университет. Все права
+        защищены</div>
+    </footer><!-- /footer -->
   </body>
 
 </html>

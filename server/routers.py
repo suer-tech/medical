@@ -9,10 +9,18 @@ from server._core.cookies import get_session_cookie_options
 from server._core.const import COOKIE_NAME, ONE_YEAR_MS
 import server.file_storage as db
 # Убрали storage_put - для MVP используем локальное хранилище
-from server.openai import analyze_xray_image
+from server.openai import analyze_xray_image, analyze_template_form
 from server.pdf import generate_pdf
 from server.models import StudyType, StudyStatus, ChatMessageRole
-from nanoid import generate
+# Optional nanoid import
+try:
+    from nanoid import generate
+except ImportError:
+    import secrets
+    import string
+    def generate(size=21):
+        alphabet = string.ascii_letters + string.digits + '-_'
+        return ''.join(secrets.choice(alphabet) for _ in range(size))
 
 router = APIRouter()
 
@@ -20,7 +28,7 @@ router = APIRouter()
 # Pydantic models for requests/responses
 class StudyCreateInput(BaseModel):
     title: str = Field(..., min_length=1)
-    studyType: str = Field(..., pattern="^(retinal_scan|optic_nerve|macular_analysis)$")
+    studyType: str = Field(..., pattern="^(retinal_scan|optic_nerve|macular_analysis|free_query|template_form|ultrasound_thyroid|ultrasound_liver|lab_blood)$")
 
 
 class StudyCreateOutput(BaseModel):
@@ -186,8 +194,9 @@ async def auth_logout(request: Request):
 async def studies_list(user: dict = Depends(require_user)):
     """Get all studies for user"""
     studies = await db.get_studies_by_user_id(user["id"])
-    # Файловое хранилище возвращает словари, просто возвращаем их
-    return studies
+    # Файловое хранилище возвращает словари, используем JSONResponse для правильного Content-Length
+    # Это исправляет проблему ERR_CONTENT_LENGTH_MISMATCH
+    return JSONResponse(content=studies)
 
 
 class StudyGetInput(BaseModel):
@@ -207,7 +216,8 @@ async def studies_get(study_id: int, user: dict = Depends(require_user)):
     # Добавляем изображения к исследованию
     result = study.copy()
     result["images"] = images
-    return result
+    # Используем JSONResponse для правильного Content-Length
+    return JSONResponse(content=result)
 
 
 @router.post("/api/studies")
@@ -246,8 +256,20 @@ async def studies_upload_image(study_id: int, input_data: StudyUploadImageInput,
     return {"id": image_id, "url": image_url}
 
 
+class TemplateFieldInput(BaseModel):
+    name: str
+    value: str
+    included: bool
+    section: Optional[str] = ""
+
+
+class StudyAnalyzeInput(BaseModel):
+    userQuery: Optional[str] = None
+    template: Optional[List[TemplateFieldInput]] = None
+
+
 @router.post("/api/studies/{study_id}/analyze")
-async def studies_analyze(study_id: int, user: dict = Depends(require_user)):
+async def studies_analyze(study_id: int, input_data: StudyAnalyzeInput = None, user: dict = Depends(require_user)):
     """Analyze study images"""
     study = await db.get_study_by_id(study_id)
     if not study or study["userId"] != user["id"]:
@@ -261,19 +283,53 @@ async def studies_analyze(study_id: int, user: dict = Depends(require_user)):
     await db.update_study(study_id, {"status": "analyzing"})
     
     try:
-        # Analyze the first image
-        analysis_result = await analyze_xray_image(images[0]["url"], study["studyType"])
+        # Get user query or template if provided
+        user_query = input_data.userQuery if input_data and input_data.userQuery else None
+        template = input_data.template if input_data and input_data.template else None
         
-        # Update study with results
+        # Analyze the first image
+        if template:
+            # Convert Pydantic models to dicts
+            template_dicts = [t.dict() if hasattr(t, 'dict') else t for t in template]
+            analysis_result = await analyze_template_form(images[0]["url"], template_dicts)
+            
+            # If result is a dict (new structured format), convert to JSON string for storage
+            if isinstance(analysis_result, dict):
+                import json
+                analysis_result_str = json.dumps(analysis_result, ensure_ascii=False)
+            else:
+                analysis_result_str = analysis_result
+        else:
+            analysis_result = await analyze_xray_image(images[0]["url"], study["studyType"], user_query=user_query)
+            analysis_result_str = analysis_result
+        
+        # Update study with results (store as string)
         await db.update_study(study_id, {
             "status": "completed",
-            "analysisResult": analysis_result,
+            "analysisResult": analysis_result_str,
         })
         
+        # Return the result (dict for template_form, string for others)
         return {"success": True, "analysisResult": analysis_result}
     except Exception as error:
-        await db.update_study(study_id, {"status": "error"})
-        raise HTTPException(status_code=500, detail="Failed to analyze image")
+        # Log detailed error
+        error_message = str(error)
+        print(f"[Analyze] Error for study {study_id}: {error_message}")
+        
+        # Don't save error status if we already have a result (partial success)
+        current_study = await db.get_study_by_id(study_id)
+        if current_study and current_study.get("analysisResult"):
+            # If result exists, keep it but mark as error
+            await db.update_study(study_id, {"status": "error"})
+        else:
+            # No result yet, mark as error
+            await db.update_study(study_id, {"status": "error"})
+        
+        # Return detailed error message
+        raise HTTPException(
+            status_code=500, 
+            detail=f"Failed to analyze image: {error_message}"
+        )
 
 
 class StudyUpdateRequest(BaseModel):
@@ -351,8 +407,8 @@ async def studies_get_chat_messages(study_id: int, user: dict = Depends(require_
         raise HTTPException(status_code=403, detail="Forbidden")
     
     messages = await db.get_chat_messages(study_id)
-    # Файловое хранилище возвращает словари, просто возвращаем их
-    return messages
+    # Файловое хранилище возвращает словари, используем JSONResponse для правильного Content-Length
+    return JSONResponse(content=messages)
 
 
 @router.post("/api/studies/{study_id}/messages")

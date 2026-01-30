@@ -1,6 +1,13 @@
 """Environment configuration"""
 import os
 from typing import Optional
+from pathlib import Path
+from dotenv import load_dotenv
+
+# Load .env file from server directory
+_env_path = Path(__file__).parent.parent / ".env"
+if _env_path.exists():
+    load_dotenv(_env_path)
 
 
 class ENV:

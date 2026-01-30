@@ -67,9 +67,13 @@ export const api = {
           mimeType: data.mimeType,
         }),
       }),
-    analyze: (studyId: number) =>
+    analyze: (studyId: number, userQuery?: string, template?: Array<{ name: string; value: string; included: boolean }>) =>
       apiRequest<{ success: boolean; analysisResult: string }>(`/studies/${studyId}/analyze`, {
         method: "POST",
+        body: JSON.stringify({ 
+          userQuery: userQuery || null,
+          template: template || null,
+        }),
       }),
     downloadPDF: (studyId: number) =>
       apiRequest<{ pdf: string; filename: string }>(`/studies/${studyId}/pdf`),

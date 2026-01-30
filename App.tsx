@@ -1,7 +1,7 @@
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/NotFound";
-import { Route, Switch, Redirect, Router as WouterRouter } from "wouter";
+import { Route, Switch, Router as WouterRouter, useLocation } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { useAuth } from "./_core/hooks/useAuth";
@@ -10,22 +10,23 @@ import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import NewStudy from "./pages/NewStudy";
 import StudyView from "./pages/StudyView";
+import React, { useEffect } from "react";
 
 // Определяем базовый путь для роутера
-const getBasePath = () => {
-  if (typeof window !== 'undefined') {
-    const path = window.location.pathname;
-    if (path.startsWith('/medical')) {
-      return '/medical';
-    }
-  }
-  return '';
-};
-
-const basePath = getBasePath();
 
 function ProtectedRoute({ component: Component, ...rest }: { component: React.ComponentType; path: string }) {
   const { isAuthenticated, loading } = useAuth();
+  const [location, navigate] = useLocation();
+  const hasRedirected = React.useRef(false);
+
+  useEffect(() => {
+    // Используем useEffect для редиректа, чтобы избежать циклов
+    // Добавляем проверку, чтобы не редиректить несколько раз
+    if (!loading && !isAuthenticated && !hasRedirected.current && location !== "/login") {
+      hasRedirected.current = true;
+      navigate("/login", { replace: true });
+    }
+  }, [loading, isAuthenticated, navigate, location]);
 
   if (loading) {
     return (
@@ -36,7 +37,7 @@ function ProtectedRoute({ component: Component, ...rest }: { component: React.Co
   }
 
   if (!isAuthenticated) {
-    return <Redirect to="/login" />;
+    return null; // Не рендерим компонент, пока не произойдет редирект
   }
 
   return <Component />;
@@ -44,17 +45,9 @@ function ProtectedRoute({ component: Component, ...rest }: { component: React.Co
 
 function Router() {
   // Нормализуем текущий путь, убирая базовый путь
-  const getLocation = () => {
-    if (typeof window === 'undefined') return '/';
-    let path = window.location.pathname;
-    if (basePath && path.startsWith(basePath)) {
-      path = path.slice(basePath.length) || '/';
-    }
-    return path;
-  };
 
   return (
-    <WouterRouter base={basePath}>
+    <WouterRouter>
       <Switch>
         <Route path="/login" component={Login} />
         <Route path="/">

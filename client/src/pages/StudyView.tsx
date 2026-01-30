@@ -10,6 +10,8 @@ import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { ArrowLeft, Save, Download, Loader2, Edit2, Eye, Send, MessageSquare } from "lucide-react";
 import { toast } from "sonner";
+import TemplateFormFields, { TemplateField } from "@/components/TemplateFormFields";
+import { DEFAULT_TEMPLATE_FIELDS } from "@/constants/ostTemplateFields";
 
 export default function StudyView() {
   const [, navigate] = useLocation();
@@ -20,6 +22,7 @@ export default function StudyView() {
   const [isEditing, setIsEditing] = useState(false);
   const [title, setTitle] = useState("");
   const [analysisResult, setAnalysisResult] = useState("");
+  const [templateFields, setTemplateFields] = useState<TemplateField[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
   const [chatMessage, setChatMessage] = useState("");
@@ -30,12 +33,18 @@ export default function StudyView() {
     queryKey: ["study", studyId],
     queryFn: () => api.studies.get(studyId!),
     enabled: !!studyId,
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
   });
 
   const { data: chatMessages = [], refetch: refetchChat } = useQuery({
     queryKey: ["studyMessages", studyId],
     queryFn: () => api.studies.getMessages(studyId!),
     enabled: !!studyId,
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
   });
 
   const updateStudyMutation = useMutation({
@@ -58,11 +67,63 @@ export default function StudyView() {
   });
 
   useEffect(() => {
-    if (study) {
-      setTitle(study.title);
-      setAnalysisResult(study.analysisResult || "");
+    if (!study) return;
+    
+    setTitle(study.title);
+    
+    // Parse analysisResult - could be string, object, or structured JSON string
+    let resultStr = "";
+    let parsed: any = null;
+    
+    // Handle different formats of analysisResult
+    if (study.analysisResult) {
+      if (typeof study.analysisResult === 'string') {
+        resultStr = study.analysisResult;
+        try {
+          parsed = JSON.parse(resultStr);
+        } catch (e) {
+          // Not JSON, treat as plain string
+          parsed = null;
+        }
+      } else if (typeof study.analysisResult === 'object') {
+        // Already an object (shouldn't happen from API, but handle it)
+        parsed = study.analysisResult;
+        resultStr = JSON.stringify(study.analysisResult);
+      }
     }
-  }, [study]);
+    
+    if (parsed && parsed.fields && Array.isArray(parsed.fields)) {
+      // Structured format: update templateFields with aiValue
+      // Initialize if needed
+      const initialFields = templateFields.length === 0 
+        ? [...DEFAULT_TEMPLATE_FIELDS]
+        : templateFields;
+      
+      const updatedFields = initialFields.map(field => {
+        const normalizedName = field.name.trim().toLowerCase();
+        const aiField = parsed.fields.find((af: any) => 
+          af.name && af.name.trim().toLowerCase() === normalizedName
+        );
+        
+        if (aiField && aiField.aiValue && 
+            (field.section === 'structure' || field.section === 'conclusion')) {
+          return { ...field, aiValue: aiField.aiValue };
+        }
+        return field;
+      });
+      
+      // Обновляем только если есть изменения
+      if (JSON.stringify(updatedFields) !== JSON.stringify(templateFields)) {
+        setTemplateFields(updatedFields);
+      }
+      
+      // Set text result for display/editing (fallback to text if available)
+      setAnalysisResult(parsed.text || resultStr || "");
+    } else {
+      // Old format: plain string or invalid JSON structure
+      setAnalysisResult(resultStr || "");
+    }
+  }, [study]); // Убрали templateFields.length из зависимостей
 
   useEffect(() => {
     // Scroll to bottom when new messages arrive
@@ -208,7 +269,13 @@ export default function StudyView() {
                     onClick={() => {
                       setIsEditing(false);
                       setTitle(study.title);
-                      setAnalysisResult(study.analysisResult || "");
+                      // Safely convert analysisResult to string
+                      const resultStr = typeof study.analysisResult === 'string' 
+                        ? study.analysisResult 
+                        : (typeof study.analysisResult === 'object' 
+                          ? JSON.stringify(study.analysisResult) 
+                          : "");
+                      setAnalysisResult(resultStr);
                     }}
                   >
                     Отмена
@@ -280,29 +347,43 @@ export default function StudyView() {
               </div>
 
               {/* Analysis Result Field with Scroll */}
-              <div className="space-y-2">
-                <Label htmlFor="analysis">Заключение</Label>
-                {isEditing ? (
-                  <Textarea
-                    id="analysis"
-                    value={analysisResult}
-                    onChange={(e) => setAnalysisResult(e.target.value)}
-                    placeholder="Введите результаты анализа"
-                    className="font-mono text-sm"
-                    rows={10}
+              {study?.studyType === "template_form" && templateFields.length > 0 ? (
+                // Show template form for template_form studies
+                <div className="space-y-2">
+                  <Label>Результаты анализа по шаблону</Label>
+                  <TemplateFormFields
+                    fields={templateFields}
+                    onChange={setTemplateFields}
                   />
-                ) : (
-                  <ScrollArea className="h-[400px] w-full rounded-lg border bg-muted/30 p-4">
-                    <div className="prose prose-sm max-w-none">
-                      {analysisResult ? (
-                        <div className="whitespace-pre-wrap">{analysisResult}</div>
-                      ) : (
-                        <p className="text-muted-foreground italic">Результаты анализа отсутствуют</p>
-                      )}
-                    </div>
-                  </ScrollArea>
-                )}
-              </div>
+                </div>
+              ) : (
+                // Show text result for other study types
+                <div className="space-y-2">
+                  <Label htmlFor="analysis">Заключение</Label>
+                  {isEditing ? (
+                    <Textarea
+                      id="analysis"
+                      value={typeof analysisResult === 'string' ? analysisResult : JSON.stringify(analysisResult || {}, null, 2)}
+                      onChange={(e) => setAnalysisResult(e.target.value)}
+                      placeholder="Введите результаты анализа"
+                      className="font-mono text-sm"
+                      rows={10}
+                    />
+                  ) : (
+                    <ScrollArea className="h-[400px] w-full rounded-lg border bg-muted/30 p-4">
+                      <div className="prose prose-sm max-w-none">
+                        {analysisResult && typeof analysisResult === 'string' ? (
+                          <div className="whitespace-pre-wrap">{analysisResult}</div>
+                        ) : analysisResult ? (
+                          <div className="whitespace-pre-wrap">{JSON.stringify(analysisResult, null, 2)}</div>
+                        ) : (
+                          <p className="text-muted-foreground italic">Результаты анализа отсутствуют</p>
+                        )}
+                      </div>
+                    </ScrollArea>
+                  )}
+                </div>
+              )}
             </CardContent>
           </Card>
 

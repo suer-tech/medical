@@ -15,21 +15,35 @@ def is_ip_address(host: str) -> bool:
 
 def is_secure_request(request: Request) -> bool:
     """Check if request is secure (HTTPS)"""
+    # Check direct HTTPS
     if request.url.scheme == "https":
         return True
     
+    # Check X-Forwarded-Proto header (from proxy)
     forwarded_proto = request.headers.get("x-forwarded-proto")
-    if not forwarded_proto:
-        return False
+    if forwarded_proto:
+        proto_list = forwarded_proto.split(",")
+        if any(proto.strip().lower() == "https" for proto in proto_list):
+            return True
     
-    proto_list = forwarded_proto.split(",")
-    return any(proto.strip().lower() == "https" for proto in proto_list)
+    # Check X-Forwarded-Scheme (alternative header)
+    forwarded_scheme = request.headers.get("x-forwarded-scheme")
+    if forwarded_scheme and forwarded_scheme.lower() == "https":
+        return True
+    
+    # For domain medscan.krmu.edu.kz, assume HTTPS (it's always served over HTTPS)
+    host = request.headers.get("host", "").split(":")[0]
+    if host == "medscan.krmu.edu.kz":
+        return True
+    
+    return False
 
 
 def get_session_cookie_options(request: Request) -> Dict[str, any]:
     """Get session cookie options based on request"""
     host = request.headers.get("host", "").split(":")[0]
     is_local = host in LOCAL_HOSTS or host == "::1" or is_ip_address(host)
+    is_secure = is_secure_request(request)
     
     # For localhost and IP addresses, use lax samesite without secure
     # Важно: не указываем domain для localhost/IP, чтобы cookie работал
@@ -43,11 +57,21 @@ def get_session_cookie_options(request: Request) -> Dict[str, any]:
             # Не указываем domain для localhost/IP - это позволит cookie работать
         }
     else:
-        # For domain names, use none with secure (for cross-site requests)
-        return {
-            "httponly": True,
-            "path": "/",
-            "samesite": "none",
-            "secure": is_secure_request(request),
-        }
+        # For domain names
+        # If HTTPS, use secure=True (required for SameSite=None)
+        # If HTTP, use SameSite=Lax (works for same-site requests)
+        if is_secure:
+            return {
+                "httponly": True,
+                "path": "/",
+                "samesite": "none",
+                "secure": True,  # Required for SameSite=None on HTTPS
+            }
+        else:
+            return {
+                "httponly": True,
+                "path": "/",
+                "samesite": "lax",  # Lax works for same-site HTTP requests
+                "secure": False,
+            }
 

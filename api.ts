@@ -1,17 +1,5 @@
 // Простой API клиент для работы с REST API
-// Определяем базовый URL API в зависимости от контекста
-const getApiBase = () => {
-  if (typeof window !== 'undefined') {
-    const path = window.location.pathname;
-    // Если приложение работает на /medical, используем /medical/api
-    if (path.startsWith('/medical')) {
-      return '/medical/api';
-    }
-  }
-  return '/api';
-};
-
-const API_BASE = getApiBase();
+const API_BASE = '/api';
 
 async function apiRequest<T>(
   endpoint: string,
@@ -21,7 +9,7 @@ async function apiRequest<T>(
   
   const response = await fetch(url, {
     ...options,
-    credentials: "include", // Важно для cookies
+    credentials: "include",
     headers: {
       "Content-Type": "application/json",
       ...options.headers,
@@ -33,7 +21,6 @@ async function apiRequest<T>(
     throw new Error(error.detail || `HTTP error! status: ${response.status}`);
   }
 
-  // Если ответ пустой (например, для DELETE)
   if (response.status === 204 || response.headers.get("content-length") === "0") {
     return {} as T;
   }
@@ -42,7 +29,6 @@ async function apiRequest<T>(
 }
 
 export const api = {
-  // Auth
   auth: {
     me: () => apiRequest<{ id: number; openId: string; name: string; email: string; role: string } | null>("/auth/me"),
     login: (email: string, password: string) =>
@@ -55,8 +41,6 @@ export const api = {
         method: "POST",
       }),
   },
-
-  // Studies
   studies: {
     list: () => apiRequest<any[]>("/studies"),
     get: (id: number) => apiRequest<any>(`/studies/${id}`),
@@ -83,9 +67,13 @@ export const api = {
           mimeType: data.mimeType,
         }),
       }),
-    analyze: (studyId: number) =>
-      apiRequest<{ success: boolean; analysisResult: string }>(`/studies/${studyId}/analyze`, {
+    analyze: (studyId: number, userQuery?: string, template?: Array<{ name: string; value: string; included: boolean }>) =>
+      apiRequest<{ success: boolean; analysisResult: string | { fields: Array<{ name: string; aiValue: string | null; section: string }>; text: string } }>(`/studies/${studyId}/analyze`, {
         method: "POST",
+        body: JSON.stringify({ 
+          userQuery: userQuery || null,
+          template: template || null,
+        }),
       }),
     downloadPDF: (studyId: number) =>
       apiRequest<{ pdf: string; filename: string }>(`/studies/${studyId}/pdf`),
@@ -98,4 +86,3 @@ export const api = {
       }),
   },
 };
-

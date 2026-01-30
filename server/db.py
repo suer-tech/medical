@@ -1,13 +1,33 @@
 """Database operations using SQLAlchemy"""
 from typing import Optional, List
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker, Session
-from sqlalchemy.exc import SQLAlchemyError
-from server.models import (
-    Base, User, Study, StudyImage, ChatMessage,
-    UserRole, StudyType, StudyStatus, ChatMessageRole
-)
 from server._core.env import env
+
+# Optional SQLAlchemy imports - only if available
+try:
+    from sqlalchemy import create_engine
+    from sqlalchemy.orm import sessionmaker, Session
+    from sqlalchemy.exc import SQLAlchemyError
+    from server.models import (
+        Base, User, Study, StudyImage, ChatMessage,
+        UserRole, StudyType, StudyStatus, ChatMessageRole
+    )
+    SQLALCHEMY_AVAILABLE = True
+except ImportError:
+    # SQLAlchemy not available
+    SQLALCHEMY_AVAILABLE = False
+    create_engine = None
+    sessionmaker = None
+    Session = None
+    SQLAlchemyError = None
+    Base = None
+    User = None
+    Study = None
+    StudyImage = None
+    ChatMessage = None
+    UserRole = None
+    StudyType = None
+    StudyStatus = None
+    ChatMessageRole = None
 
 _engine = None
 _SessionLocal = None
@@ -17,6 +37,9 @@ _db: Optional[Session] = None
 def get_db() -> Optional[Session]:
     """Get database session, creating connection if needed"""
     global _engine, _SessionLocal, _db
+    
+    if not SQLALCHEMY_AVAILABLE:
+        return None
     
     if not env.database_url:
         return None
@@ -41,6 +64,10 @@ def get_db() -> Optional[Session]:
 
 async def upsert_user(user_data: dict) -> None:
     """Insert or update user"""
+    if not SQLALCHEMY_AVAILABLE:
+        print("[Database] Cannot upsert user: SQLAlchemy not available")
+        return
+    
     if not user_data.get("openId"):
         raise ValueError("User openId is required for upsert")
     
@@ -101,6 +128,10 @@ async def upsert_user(user_data: dict) -> None:
 
 async def get_user_by_open_id(open_id: str) -> Optional[User]:
     """Get user by openId"""
+    if not SQLALCHEMY_AVAILABLE:
+        print("[Database] Cannot get user: SQLAlchemy not available")
+        return None
+    
     db = get_db()
     if not db:
         print("[Database] Cannot get user: database not available")
@@ -118,6 +149,10 @@ async def get_user_by_open_id(open_id: str) -> Optional[User]:
 
 async def get_user_by_email(email: str) -> Optional[User]:
     """Get user by email"""
+    if not SQLALCHEMY_AVAILABLE:
+        print("[Database] Cannot get user: SQLAlchemy not available")
+        return None
+    
     db = get_db()
     if not db:
         print("[Database] Cannot get user: database not available")
@@ -136,6 +171,9 @@ async def get_user_by_email(email: str) -> Optional[User]:
 # Study operations
 async def create_study(study_data: dict) -> int:
     """Create a new study and return its ID"""
+    if not SQLALCHEMY_AVAILABLE:
+        raise ValueError("SQLAlchemy not available")
+    
     db = get_db()
     if not db:
         raise ValueError("Database not available")
@@ -161,6 +199,9 @@ async def create_study(study_data: dict) -> int:
 
 async def get_studies_by_user_id(user_id: int) -> List[Study]:
     """Get all studies for a user"""
+    if not SQLALCHEMY_AVAILABLE:
+        return []
+    
     db = get_db()
     if not db:
         return []
@@ -177,6 +218,9 @@ async def get_studies_by_user_id(user_id: int) -> List[Study]:
 
 async def get_study_by_id(study_id: int) -> Optional[Study]:
     """Get study by ID"""
+    if not SQLALCHEMY_AVAILABLE:
+        return None
+    
     db = get_db()
     if not db:
         return None
@@ -193,6 +237,9 @@ async def get_study_by_id(study_id: int) -> Optional[Study]:
 
 async def update_study(study_id: int, data: dict) -> None:
     """Update study"""
+    if not SQLALCHEMY_AVAILABLE:
+        raise ValueError("SQLAlchemy not available")
+    
     db = get_db()
     if not db:
         raise ValueError("Database not available")
@@ -222,6 +269,9 @@ async def update_study(study_id: int, data: dict) -> None:
 
 async def delete_study(study_id: int) -> None:
     """Delete study"""
+    if not SQLALCHEMY_AVAILABLE:
+        raise ValueError("SQLAlchemy not available")
+    
     db = get_db()
     if not db:
         raise ValueError("Database not available")
@@ -242,6 +292,9 @@ async def delete_study(study_id: int) -> None:
 # Study image operations
 async def create_study_image(image_data: dict) -> int:
     """Create study image and return its ID"""
+    if not SQLALCHEMY_AVAILABLE:
+        raise ValueError("SQLAlchemy not available")
+    
     db = get_db()
     if not db:
         raise ValueError("Database not available")
@@ -269,6 +322,9 @@ async def create_study_image(image_data: dict) -> int:
 
 async def get_study_images(study_id: int) -> List[StudyImage]:
     """Get all images for a study"""
+    if not SQLALCHEMY_AVAILABLE:
+        return []
+    
     db = get_db()
     if not db:
         return []
@@ -286,6 +342,9 @@ async def get_study_images(study_id: int) -> List[StudyImage]:
 # Chat message operations
 async def create_chat_message(message_data: dict) -> int:
     """Create chat message and return its ID"""
+    if not SQLALCHEMY_AVAILABLE:
+        raise ValueError("SQLAlchemy not available")
+    
     db = get_db()
     if not db:
         raise ValueError("Database not available")
@@ -310,6 +369,9 @@ async def create_chat_message(message_data: dict) -> int:
 
 async def get_chat_messages(study_id: int) -> List[ChatMessage]:
     """Get all chat messages for a study"""
+    if not SQLALCHEMY_AVAILABLE:
+        return []
+    
     db = get_db()
     if not db:
         return []
